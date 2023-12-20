@@ -5,6 +5,8 @@ import './App.css'
 import Navbar from '@/scenes/NavBar'
 import Home from '@/scenes/Home'
 import { SelectedPage } from '@/shared/types'
+import Benefits from './scenes/Benefits'
+
 
 function App() {
 
@@ -35,6 +37,8 @@ function App() {
         setSelectedPage={setSelectedPage} />
         
       <Home setSelectedPage={setSelectedPage}/>
+      
+      <Benefits setSelectedPage={setSelectedPage}/>
 
 
     </div>
