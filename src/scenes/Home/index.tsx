@@ -4,9 +4,6 @@ import ActionButton from '@/shared/ActionButton'
 import HomePageText from "@/assets/HomePageText.png";
 import HomePageGraphic from "@/assets/HomePageGraphic.png";
 import SponsorRedBull from "@/assets/SponsorRedBull.png";
-import SponsorForbes from "@/assets/SponsorForbes.png";
-import SponsorFortune from "@/assets/SponsorFortune.png";
-import React from 'react'
 import AnchorLink from 'react-anchor-link-smooth-scroll';
 import { motion } from 'framer-motion';
 
