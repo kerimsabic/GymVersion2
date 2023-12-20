@@ -6,6 +6,8 @@ import Navbar from '@/scenes/NavBar'
 import Home from '@/scenes/Home'
 import { SelectedPage } from '@/shared/types'
 import Benefits from './scenes/Benefits'
+import OurClasses from './scenes/ourClasses'
+import Footer from './scenes/Footer'
 
 
 function App() {
@@ -39,6 +41,10 @@ function App() {
       <Home setSelectedPage={setSelectedPage}/>
       
       <Benefits setSelectedPage={setSelectedPage}/>
+
+      <OurClasses setSelectedPage={setSelectedPage}/>
+
+      <Footer />
 
 
     </div>
