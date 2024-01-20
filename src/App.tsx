@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import Navbar from '@/scenes/NavBar'
-import Home from '@/scenes/Home'
 import { SelectedPage } from '@/shared/types'
-import Benefits from './scenes/Benefits'
-import OurClasses from './scenes/ourClasses'
 import Footer from './scenes/Footer'
+import { Route, Routes } from "react-router-dom"
+import HomePage from './scenes/HomePage/HomePage'
+import LogIn from './scenes/LogIn'
+import UserPage from './scenes/UserPage/UserPage'
 
 
 function App() {
@@ -35,13 +36,12 @@ function App() {
         isTopOfPage={isTopOfPage}
         selectedPage={selectedPage}
         setSelectedPage={setSelectedPage} />
-        
-      <Home setSelectedPage={setSelectedPage}/>
-      
-      <Benefits setSelectedPage={setSelectedPage}/>
-
-      <OurClasses setSelectedPage={setSelectedPage}/>
-
+       <Routes>
+        <Route path="/home" element={<HomePage setSelectedPage={setSelectedPage} />} />
+        <Route path='/login' element={<LogIn/>}/>
+        <Route path='/user' element={<UserPage />}/>
+       
+      </Routes>
       <Footer />
 
 

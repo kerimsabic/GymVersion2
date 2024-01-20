@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/solid";
 import Logo from "@/assets/Logo.png";
 import Link from "./Link";
+import { Link as Link2 } from 'react-router-dom';
 import { SelectedPage } from "@/shared/types";
 import useMediaQuery from "@/hooks/useMediaQuery";
-import ActionButton from "@/shared/ActionButton";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { logout } from "@/store/authSlice";
 
 type Props = {
   isTopOfPage: boolean;
@@ -16,7 +19,10 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
   const flexBetween = "flex items-center justify-between";
   const [isMenuToggled, setIsMenuToggled] = useState<boolean>(false);
   const isAboveMediumScreens = useMediaQuery("(min-width: 1060px)");
-  const navbarBackground = isTopOfPage ? "" : "bg-primary-100 drop-shadow";
+  const navbarBackground = isTopOfPage ? "bg-primary-100" : "bg-primary-100 drop-shadow";
+
+  const { userToken } = useSelector((state: RootState) => state.auth)
+  const dispatch = useDispatch()
 
   return (
     <nav>
@@ -26,7 +32,8 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
         <div className={`${flexBetween} mx-auto w-5/6`}>
           <div className={`${flexBetween} w-full gap-16`}>
             {/* LEFT SIDE */}
-            <img alt="logo" src={Logo} />
+            <Link2 to="/home"><img alt="logo" src={Logo} /></Link2>
+
 
             {/* RIGHT SIDE */}
             {isAboveMediumScreens ? (
@@ -52,13 +59,33 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
                     selectedPage={selectedPage}
                     setSelectedPage={setSelectedPage}
                   />
+                  {!userToken ?
+                    (
+                      <></>
+                    )
+                    :
+                    (
+                      <Link2 to="/user">
+                        <span>Profile</span>
+                      </Link2>
+                    )}
+
                 </div>
+
                 <div className={`${flexBetween} gap-8`}>
-                  <p>Sign In</p>
-                  <ActionButton setSelectedPage={setSelectedPage}>
-                    Become a Member
-                  </ActionButton>
+                  {!userToken ?
+                    (
+                      <Link2 to="/login">
+                        <span>LogIn</span>
+                      </Link2>)
+                    :
+                    (
+                      <Link2 to="/login">
+                        <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className='text-xl'>Log out</span></button>
+                      </Link2>
+                    )}
                 </div>
+
               </div>
             ) : (
               <button
@@ -104,6 +131,27 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
               selectedPage={selectedPage}
               setSelectedPage={setSelectedPage}
             />
+            {!userToken ?
+              (
+                <></>
+              )
+              :
+              (
+                <Link2 to="/user">
+                  <span>Profile</span>
+                </Link2>
+              )}
+            {!userToken ?
+              (
+                <Link2 to="/login">
+                  <span>LogIn</span>
+                </Link2>)
+              :
+              (
+                <Link2 to="/login">
+                  <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className='text-xl'>Log out</span></button>
+                </Link2>
+              )}
           </div>
         </div>
       )}
