@@ -37,6 +37,7 @@ function App() {
         selectedPage={selectedPage}
         setSelectedPage={setSelectedPage} />
        <Routes>
+       <Route path="/" element={<HomePage setSelectedPage={setSelectedPage} />} />
         <Route path="/home" element={<HomePage setSelectedPage={setSelectedPage} />} />
         <Route path='/login' element={<LogIn/>}/>
         <Route path='/user' element={<UserPage />}/>
