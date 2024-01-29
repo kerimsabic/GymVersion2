@@ -11,16 +11,16 @@ import { yupResolver } from "@hookform/resolvers/yup"
 export type PasswordForm = {
 
     password: string,
-    confirmpassword: string
+    //confirmpassword: string
 
 }
 
 const schema = yup.object().shape({
     password: yup.string().required('New Password is required'),
-    confirmpassword: yup
+   /* confirmpassword: yup
         .string()
         .oneOf([yup.ref('newPassword')], 'Passwords must match')
-        .required('Confirm Password is required'),
+        .required('Confirm Password is required'),*/
 });
 
 const UserPage = () => {
@@ -49,7 +49,13 @@ const UserPage = () => {
      const handleFormSubmittion: SubmitHandler<PasswordForm> = async (data) => {
     
         try {
-            await updatePassword(data)
+            console.log(data)
+            await updatePassword({id:id, data:data})
+
+            if(isSuccess){
+                window.confirm("Successfully updated password"),
+                setIsFormVisible(!isFormVisible)
+            }
           }
                  
          catch (error) {
@@ -94,7 +100,7 @@ const UserPage = () => {
                 </div>
 
 
-                <div className="bg-white overflow-hidden shadow rounded-lg border mx-36">
+                <div className="bg-white overflow-hidden shadow rounded-lg border sm:mx-36 ">
                     <div className="px-4 py-5 sm:px-6 bg-primary-100">
                         <h3 className="text-lg leading-6 font-medium text-gray-900 flex justify-center">
                             User Profile
@@ -198,9 +204,9 @@ const UserPage = () => {
                         {isFormVisible && (
                             <div>
                                 <h2>Change Password</h2>
-                                {/* Your password change form inputs go here */}
+                               
                                 <form onSubmit={handleSubmit(handleFormSubmittion)}>
-                                    {/* Form inputs for new password and confirmation with borders */}
+                                   
                                     <div className="border border-gray-300 rounded-md mb-3">
                                         <input
                                             type="password"
@@ -209,15 +215,15 @@ const UserPage = () => {
                                             {...register("password")}
                                         />
                                     </div>
-                                    <div className="border border-gray-300 rounded-md mb-3">
+                         {/* <div className="border border-gray-300 rounded-md mb-3">
                                         <input
                                             type="password"
                                             placeholder="Confirm Password"
                                             className="w-full p-2"
                                             {...register("password")}
                                         />
-                                    </div>
-                                    {/* Submit button */}
+                                    </div>*/}
+                                  
                                     <button
                                         type="submit"
                                         className="bg-blue-500 text-white px-4 py-2 rounded-md"
