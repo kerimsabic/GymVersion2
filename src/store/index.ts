@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice"
 import membersApi from "./memberSlice";
+import plansApi from "./plansSlice";
 
 
 
@@ -8,8 +9,9 @@ const store = configureStore({
     reducer:{
         auth:authReducer,
         membersApi:membersApi.reducer,
+        plansApi:plansApi.reducer,
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(membersApi.middleware),
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(membersApi.middleware, plansApi.middleware),
    
 })
 

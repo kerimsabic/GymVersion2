@@ -8,6 +8,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { logout } from "@/store/authSlice";
+import { button } from "@material-tailwind/react";
 
 type Props = {
   isTopOfPage: boolean;
@@ -20,6 +21,8 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
   const [isMenuToggled, setIsMenuToggled] = useState<boolean>(false);
   const isAboveMediumScreens = useMediaQuery("(min-width: 1060px)");
   const navbarBackground = isTopOfPage ? "bg-primary-100" : "bg-primary-100 drop-shadow";
+
+  const[profileActive, setProfileActive]=useState(false);
 
   const { userToken } = useSelector((state: RootState) => state.auth)
   const dispatch = useDispatch()
@@ -45,7 +48,7 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
                     setSelectedPage={setSelectedPage}
                   />
                   <Link
-                    page="Benefits"
+                    page="Plans"
                     selectedPage={selectedPage}
                     setSelectedPage={setSelectedPage}
                   />
@@ -54,19 +57,17 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
                     selectedPage={selectedPage}
                     setSelectedPage={setSelectedPage}
                   />
-                  <Link
-                    page="Contact Us"
-                    selectedPage={selectedPage}
-                    setSelectedPage={setSelectedPage}
-                  />
+                  
                   {!userToken ?
                     (
                       <></>
                     )
                     :
                     (
+                      
                       <Link2 to="/user">
-                        <span>Profile</span>
+        
+                        <span className="active:text-red-400">Profile</span>
                       </Link2>
                     )}
 
@@ -75,13 +76,19 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
                 <div className={`${flexBetween} gap-8`}>
                   {!userToken ?
                     (
-                      <Link2 to="/login">
-                        <span>LogIn</span>
-                      </Link2>)
+                      <>
+                        <Link2 to="/login">
+                          <span className="border border-yellow-400 rounded-lg p-2 text-sm hover:border-red-500">Sign In</span>
+                        </Link2>
+                        <Link2 to="/register">
+                          <span className="border border-yellow-400 rounded-lg p-2 text-sm hover:border-red-500">Register</span>
+                        </Link2>  
+                        </>
+                    )
                     :
                     (
                       <Link2 to="/login">
-                        <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className='text-xl'>Log out</span></button>
+                        <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className="border border-yellow-400 rounded-lg p-2 text-sm hover:border-red-500">Sign Out</span></button>
                       </Link2>
                     )}
                 </div>
@@ -144,12 +151,12 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
             {!userToken ?
               (
                 <Link2 to="/login">
-                  <span>LogIn</span>
+                  <span className="">Sign In</span>
                 </Link2>)
               :
               (
                 <Link2 to="/login">
-                  <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className='text-xl'>Log out</span></button>
+                  <button onClick={() => { dispatch(logout()); }} className='text-red-500 flex justify-center items-center'><span className="">Sign Out</span></button>
                 </Link2>
               )}
           </div>

@@ -1,8 +1,11 @@
+
+
 export enum SelectedPage{
     Home="home",
     OurClasses = "ourclasses",
-    Benefits="benefits",
-    ContactUs="contactus"
+    Plans="plans",
+    ContactUs="contactus",
+    Profile="profile"
 
 }
 
@@ -26,6 +29,40 @@ export interface BenefitType {
     ADMIN = 'ADMIN',
     TRAINER = 'TRAINER',
     MEMBER = 'MEMBER'
+  }
+
+  export type TrainingPlan={
+    id:string;
+    name:string;
+    description:string;
+    price:string;
+    numOfPeople:string,
+    water:boolean,
+    freeparking:boolean;
+    accessTime:string;
+    statusType:string;
+  }
+
+  export type Attendance={
+    id:string;
+    firstName:string;
+    lastName:string;
+    userType:string;
+    email:string,
+    image:string,
+    date:string;
+  }
+
+  export type Membership={
+    id:string;
+    memberName:string;
+    memberEmail:string;
+    trainingPlanId:string
+    trainingPlanName:string;
+    trainingPlanPrice:string,
+    startDate:string,
+    endDate:string;
+    statusType:string
   }
 
   export type Member = {

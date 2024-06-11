@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL,  } from "@/shared/data";
-import { Member, Trainer } from "@/shared/types";
+import { Attendance, Member, Membership, Trainer, TrainingPlan } from "@/shared/types";
 
 
 
@@ -20,26 +20,12 @@ export const membersApi = createApi({
       },
     tagTypes: ["membersApi"],
     endpoints: (builder) => ({
-        getMembers: builder.query<Member[], void>({
-            query: () => "/members/",
-            providesTags: ["membersApi"],
-        }),
+        
         getUserToken: builder.query<Member | Trainer, string>({
             query: (token) => `/users/token/${token}`,
             providesTags: (_result, _error, token) => [{ type: "membersApi", token }],
         }),
-        getOnlineMembers: builder.query<Member[], void>({
-            query: () => "/members/online",
-            providesTags: ["membersApi"],
-        }),
-        getOfflineMembers: builder.query<Member[], void>({
-            query: () => "/members/offline",
-            providesTags: ["membersApi"],
-        }),
-        getMemberPagin: builder.query<Member[], number | void>({
-            query: () => `/members/pagination/?page=0&pageSize=6`, // Set pageSize to 6
-            providesTags: ["membersApi"],
-          }),
+        
         addMember: builder.mutation({
             query: (data) => ({
                 url: "/auth/registerMember",
@@ -50,6 +36,11 @@ export const membersApi = createApi({
         }),
         getMemberId: builder.query<Member, string>({
             query: (id) => `/members/${id}`,
+            providesTags: (_result, _error, id) => [{ type: "membersApi", id }],
+        }),
+
+        getMemberMembership: builder.query<Membership, string>({
+            query: (id) => `/memberships/member/${id}`,
             providesTags: (_result, _error, id) => [{ type: "membersApi", id }],
         }),
         
@@ -63,7 +54,7 @@ export const membersApi = createApi({
         }),
         updateMemberPassword: builder.mutation({
             query: ({ id, data }) => ({
-                url: `/members/password/${id}`,
+                url: `/members/changePassword/${id}`,
                 method: "PUT",
                 body: data,
             }),
@@ -77,17 +68,33 @@ export const membersApi = createApi({
             }),
             invalidatesTags: ["membersApi"],
         }),
-        deleteMember: builder.mutation({
-            query: ({ id }) => ({ url: `/members/${id}`, method: "DELETE" }),
+
+        renewMembership: builder.mutation({
+            query: ({ id }) => ({
+                url: `/members/renewMembership/${id}`,
+                method: "PUT",
+                
+            }),
             invalidatesTags: ["membersApi"],
         }),
+
+        getMemberAttendance: builder.query<Attendance[], string>({
+            query: (id) => `/attendance/memberAttendance/${id}`,
+            providesTags: (_result, _error, id) => [{ type: "membersApi", id }],
+        }),
+
+        getTrainingPlan: builder.query<TrainingPlan, string>({
+            query: (id) => `/trainingPlans/${id}`,
+            providesTags: (_result, _error, id) => [{ type: "membersApi", id }],
+        }),
+        
     })
 })
 
 
 
 // Export hooks for usage in components
-export const { useGetMembersQuery, useAddMemberMutation, useUpdateMemberMutation, useDeleteMemberMutation, useGetMemberIdQuery, useGetMemberPaginQuery, useGetOfflineMembersQuery, useGetOnlineMembersQuery, useUpdateMemberMembershipSpecialMutation, useGetUserTokenQuery, useUpdateMemberPasswordMutation } = membersApi;
+export const {useAddMemberMutation, useUpdateMemberMutation, useGetMemberIdQuery, useUpdateMemberMembershipSpecialMutation, useGetUserTokenQuery, useUpdateMemberPasswordMutation, useGetMemberAttendanceQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useRenewMembershipMutation } = membersApi;
 
 
 export default membersApi;
