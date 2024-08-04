@@ -6,6 +6,7 @@ import * as yup from "yup"
 import { useSelector } from 'react-redux'
 import { yupResolver } from "@hookform/resolvers/yup"
 import { useGetPlansQuery } from '@/store/plansSlice'
+import Spinner from '../Spinner/Spinner'
 
 export type PasswordForm = {
     password: string,
@@ -34,7 +35,12 @@ const UserPage = () => {
     const [selectedNumber, setSelectedNumber] = useState<number>(1);
     const [isPlanSelected, setIsPlanSelected] = useState(false);
 
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
+
+
     const { data: plans, isLoading } = useGetPlansQuery();
+    
 
     const { data: memberMembership, refetch: refetchMembers } = useGetMemberIdQuery(id!);
     const { data: memberAttendance, isError, refetch: refetchAttendance } = useGetMemberAttendanceQuery(id!);
@@ -55,6 +61,8 @@ const UserPage = () => {
     }, [isSuccess, id]);
 
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [formData, setFormData] = useState<PasswordForm | null>(null);
 
     const { register, handleSubmit, formState: { errors } } = useForm<PasswordForm>({
         resolver: yupResolver(schema),
@@ -63,31 +71,42 @@ const UserPage = () => {
     const { handleSubmit: handleSubmit2, control } = useForm<MembershipForm>();
     const [updatePassword] = useUpdateMemberPasswordMutation();
 
-    const handleFormSubmittion: SubmitHandler<PasswordForm> = async (data) => {
+    const handleFormSubmittion: SubmitHandler<PasswordForm> = (data) => {
+        setFormData(data);
+        setIsModalVisible(true); // Show the modal when submit is clicked
+    };
+
+    const handleConfirm = async () => {
+        if (!formData) return;
+
+        setIsLoadingData(true); // Show the spinner
+
         try {
-            const response = await updatePassword({ id: id, data: data });
+            // Replace this with your actual API call
+            const response = await updatePassword({ id: id, data: formData });
 
             if (response) {
-
-                window.confirm("Successfully updated password");
-
-                setIsFormVisible(!isFormVisible);
+                window.alert("Successfully updated password");
+                setIsFormVisible(false);
             } else {
-
-                window.alert("Failed to update password: No response from server");
+                window.alert("Failed to update password");
             }
         } catch (error: any) {
-
             console.error("Error updating password:", error);
 
             if (error.response) {
-
                 window.alert("Failed to update password: " + error.response.data.message);
             } else {
-
                 window.alert("Failed to update password: " + error.message);
             }
+        } finally {
+            setIsLoadingData(false); // Hide the spinner
+            setIsModalVisible(false); // Hide the modal
         }
+    };
+
+    const handleCancel = () => {
+        setIsModalVisible(false); // Just hide the modal
     };
     const handleRenewMembershipClick = () => {
         setShowConfirmation(false);
@@ -267,8 +286,10 @@ const UserPage = () => {
                     <div className="p-5 border rounded text-center text-gray-500 max-w-sm bg-white mt-24 mb-5">
                         <img
                             className="w-32 h-32 rounded-full mx-auto bg-black"
-
                         />
+                        <div>
+                            <button><p>Edit Photo</p></button>
+                        </div>
                         <div className="text-xl mt-5">
                             <a
                                 href="#"
@@ -436,6 +457,37 @@ const UserPage = () => {
                             </div>
                         )}
 
+                        {isModalVisible && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                <div className="bg-white p-4 rounded-md shadow-md">
+                                    <p>Are you sure you want to update your password?</p>
+                                    <div className="mt-4 flex flex-col items-center">
+                                        {isLoadingData ? (
+                                           
+                                                 <Spinner /> 
+                                           
+                                           
+                                        ) : (
+                                            <div className="flex justify-end">
+                                                <button
+                                                    onClick={handleConfirm}
+                                                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button
+                                                    onClick={handleCancel}
+                                                    className="ml-2 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <h1 className='mx-10 text-center mt-10'>Membership & Plan Information:</h1>
                         <div className='flex justify-center mt-5 gap-5 max-md:flex-col md:flex-row items-center'>
                             <div className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-gray-800 dark:border-gray-700  hover:border-yellow-400 min-h-[485px] flex flex-col justify-between">
@@ -547,6 +599,7 @@ const UserPage = () => {
                                 </div>
                             ))}
                         </div>
+                       
 
                     </div>
 
