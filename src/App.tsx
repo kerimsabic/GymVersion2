@@ -8,6 +8,7 @@ import HomePage from './scenes/HomePage/HomePage'
 import LogIn from './scenes/LogIn'
 import UserPage from './scenes/UserPage/UserPage'
 import Register from './scenes/Register'
+import PaymentSuccessPage from './scenes/UserPage/PaymentSuccessPage'
 
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
         <Route path="/home" element={<HomePage setSelectedPage={setSelectedPage} />} />
         <Route path='/login' element={<LogIn />} />
         <Route path='/user' element={<UserPage />} />
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
         <Route path='/register' element={<Register />} />
 
       </Routes>

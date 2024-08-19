@@ -8,7 +8,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { logout } from "@/store/authSlice";
-import { button } from "@material-tailwind/react";
+
 
 type Props = {
   isTopOfPage: boolean;
@@ -22,7 +22,7 @@ const Navbar = ({ isTopOfPage, selectedPage, setSelectedPage }: Props) => {
   const isAboveMediumScreens = useMediaQuery("(min-width: 1060px)");
   const navbarBackground = isTopOfPage ? "bg-primary-100" : "bg-primary-100 drop-shadow";
 
-  const[profileActive, setProfileActive]=useState(false);
+
 
   const { userToken } = useSelector((state: RootState) => state.auth)
   const dispatch = useDispatch()

@@ -1,5 +1,5 @@
 import { RootState } from '@/store'
-import { useGetMemberAttendanceQuery, useGetMemberIdQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useGetUserTokenQuery, useRenewMembershipMutation, useUpdateMemberMembershipSpecialMutation, useUpdateMemberPasswordMutation } from '@/store/memberSlice'
+import { useGetMemberAttendanceQuery, useGetMemberIdQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useGetUserTokenQuery, useRenewMembershipMutation, useUpdateMemberMembershipSpecialMutation, useUpdateMemberPasswordMutation, useUpdateMembershipStripeMutation } from '@/store/memberSlice'
 import { useEffect, useState } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import * as yup from "yup"
@@ -17,6 +17,14 @@ export type MembershipForm = {
     userId?: string;
     trainingPlanId: string;
     numOfMonths: number;
+}
+
+export type MembershipFormForStripe = {
+    userId?: string;
+    trainingPlanId: string;
+    numOfMonths: number;
+    name: string | any;
+    price: string | any;
 }
 
 const schema = yup.object().shape({
@@ -39,24 +47,25 @@ const UserPage = () => {
 
 
 
-    const { data: plans, isLoading } = useGetPlansQuery();
+    const { data: plans } = useGetPlansQuery();
     
 
     const { data: memberMembership, refetch: refetchMembers } = useGetMemberIdQuery(id!);
-    const { data: memberAttendance, isError, refetch: refetchAttendance } = useGetMemberAttendanceQuery(id!);
-    const { data: membership, refetch: refetchMembership } = useGetMemberMembershipQuery(id!);
+    const { data: memberAttendance,  } = useGetMemberAttendanceQuery(id!);
+    const { data: membership,  } = useGetMemberMembershipQuery(id!);
     const trainingPlanId = membership?.trainingPlanId;
-    const { data: plan, refetch: refetchTrainingPlan } = useGetTrainingPlanQuery(trainingPlanId!);
+    const { data: plan } = useGetTrainingPlanQuery(trainingPlanId!);
     const [showConfirmation, setShowConfirmation] = useState(false);
 
     const [showUpdatePlanForm, setShowUpdatePlanForm] = useState(false);
 
     const [renewMembership] = useRenewMembershipMutation();
-    const [updateMembershipPlan] = useUpdateMemberMembershipSpecialMutation();
+    const [] = useUpdateMemberMembershipSpecialMutation();
+    const [updateMembershipPlanStipe] = useUpdateMembershipStripeMutation();
 
     useEffect(() => {
         if (isSuccess && id) {
-            refetchMembers;
+            refetchMembers; 
         }
     }, [isSuccess, id]);
 
@@ -68,7 +77,7 @@ const UserPage = () => {
         resolver: yupResolver(schema),
     });
 
-    const { handleSubmit: handleSubmit2, control } = useForm<MembershipForm>();
+    const { handleSubmit: handleSubmit2 } = useForm<MembershipForm>();
     const [updatePassword] = useUpdateMemberPasswordMutation();
 
     const handleFormSubmittion: SubmitHandler<PasswordForm> = (data) => {
@@ -110,6 +119,7 @@ const UserPage = () => {
     };
     const handleRenewMembershipClick = () => {
         setShowConfirmation(false);
+        
         renewMembership({ id: id })
             .unwrap()
             .then((data) => {
@@ -139,28 +149,41 @@ const UserPage = () => {
     };
 
 
-    const handleupdateMembershipPlanClick: SubmitHandler<MembershipForm> = (formData) => {
-        const formDataWithUserType: MembershipForm = {
+    const { data: trainingPlan, } = useGetTrainingPlanQuery(selectedPlanId, {
+        skip: !selectedPlanId, // Skip query if no plan is selected
+    });
+
+    const handleupdateMembershipPlanClick: SubmitHandler<MembershipForm> = async () => {
+       // const { data: plan, error: fetchError } = useGetTrainingPlanQuery(selectedPlanId);
+
+       
+
+        const rawPrice = trainingPlan?.price;
+        const priceWithoutDollarSign = rawPrice?.replace('$', '');
+
+        const formDataWithUserType: MembershipFormForStripe = {
             userId: id,
             trainingPlanId: selectedPlanId,
             numOfMonths: selectedNumber,
+            price: priceWithoutDollarSign,
+            name : trainingPlan?.name
         };
         setShowUpdatePlanForm(false);
-        updateMembershipPlan({ id: id, data: formDataWithUserType })
-            .unwrap()
-            .then((data) => {
-                if (data.error) {
-                    console.error('Failed to update membership', data.error);
-                    window.confirm('Failed to update membership');
-                } else {
-                    console.log('Membership updated successfully', data);
-                    window.confirm('Membership updated successfully');
-                }
-            })
-            .catch((error) => {
-                console.error('Failed to update membership', error);
-                window.confirm('Failed to update membership');
-            });
+        try {
+            // Call mutation to create payment session
+            const paymentResponse = await updateMembershipPlanStipe({ data: formDataWithUserType }).unwrap();
+
+            if (paymentResponse && paymentResponse.paymentUrl) {
+                // Redirect to the Stripe payment URL
+                window.open(paymentResponse.paymentUrl, '_blank');
+            } else {
+                console.error('Failed to get payment URL');
+                window.alert('Failed to get payment URL');
+            }
+        } catch (error) {
+            console.error('Failed to create payment session', error);
+            window.alert('Failed to create payment session');
+        }
     };
 
     const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

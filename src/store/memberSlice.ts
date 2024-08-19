@@ -87,6 +87,15 @@ export const membersApi = createApi({
             query: (id) => `/trainingPlans/${id}`,
             providesTags: (_result, _error, id) => [{ type: "membersApi", id }],
         }),
+
+        updateMembershipStripe: builder.mutation({
+            query: ({ data }) => ({
+                url: `/payment/payment`,
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["membersApi"],
+        }),
         
     })
 })
@@ -94,7 +103,7 @@ export const membersApi = createApi({
 
 
 // Export hooks for usage in components
-export const {useAddMemberMutation, useUpdateMemberMutation, useGetMemberIdQuery, useUpdateMemberMembershipSpecialMutation, useGetUserTokenQuery, useUpdateMemberPasswordMutation, useGetMemberAttendanceQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useRenewMembershipMutation } = membersApi;
+export const {useAddMemberMutation, useUpdateMemberMutation, useGetMemberIdQuery, useUpdateMemberMembershipSpecialMutation, useGetUserTokenQuery, useUpdateMemberPasswordMutation, useGetMemberAttendanceQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useRenewMembershipMutation, useUpdateMembershipStripeMutation } = membersApi;
 
 
 export default membersApi;

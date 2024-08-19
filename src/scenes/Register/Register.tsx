@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import Logo from "@/assets/Logo.png";
 import { useAddMemberMutation } from '@/store/memberSlice';
 import { useGetPlansQuery } from '@/store/plansSlice';
 
-type Props = {}
 
-const Register = (props: Props) => {
-  const { data: plans, isLoading, isError, isSuccess } = useGetPlansQuery();
+
+const Register = () => {
+  const { data: plans, isSuccess } = useGetPlansQuery();
   const [addMember] = useAddMemberMutation();
 
   const [formData, setFormData] = useState({
@@ -20,10 +20,7 @@ const Register = (props: Props) => {
     selectedPlan: '', // Add selectedPlan field
   });
 
-  const handleChange = (e: any) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
+
 
   const handlePlanChange = (e: any) => { // Handle dropdown selection
     setFormData({ ...formData, selectedPlan: e.target.value });

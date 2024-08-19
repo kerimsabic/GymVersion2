@@ -1,13 +1,13 @@
 import { SelectedPage } from '@/shared/types'
 import useMediaQuery from '@/hooks/useMediaQuery'
-import ActionButton from '@/shared/ActionButton'
+
 import HomePageText from "@/assets/HomePageText.png";
 import HomePageGraphic from "@/assets/HomePageGraphic.png";
 import SponsorRedBull from "@/assets/SponsorRedBull.png";
-import AnchorLink from 'react-anchor-link-smooth-scroll';
+
 import { Link as Link2 } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useDispatch, useSelector } from 'react-redux';
+import {  useSelector } from 'react-redux';
 import { RootState } from "@/store";
 
 type Props = {

@@ -1,73 +1,90 @@
-import { BenefitType, SelectedPage } from '@/shared/types'
+import {  SelectedPage } from '@/shared/types';
 import { motion } from 'framer-motion';
-import { HomeModernIcon, UserGroupIcon, AcademicCapIcon, } from "@heroicons/react/24/solid";
+
 import BenefitsPageGraphic from "@/assets/BenefitsPageGraphic.png";
 import HText from '@/shared/HText';
-import Benefit from './Plans';
+
 import ActionButton from '@/shared/ActionButton';
 import { useGetPlansQuery } from '@/store/plansSlice';
+import { useGetUserTokenQuery, useUpdateMembershipStripeMutation } from '@/store/memberSlice'; // Import the mutation hook
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 
-
-const container = {
-    hidden: {},
-    visible: {
-        transition: { staggerChildren: 0.2 },
-    },
-};
-
-
-
+export type MembershipFormForStripe = {
+    userId?: string;
+    trainingPlanId: string;
+    numOfMonths: number;
+    name: string | any;
+    price: string | any;
+}
 
 type Props = {
     setSelectedPage: (value: SelectedPage) => void;
-}
-
-
-
+};
 
 const Plans = ({ setSelectedPage }: Props) => {
+    const { data: plans } = useGetPlansQuery();
+    const [updateMembershipStripe] = useUpdateMembershipStripeMutation();
+    const { /*loading*/ userToken } = useSelector((state: RootState) => state.auth)
+    const { data: member } = useGetUserTokenQuery(userToken!);
+    const id = member?.id
 
 
-    const { data: plans, isLoading, isError, isSuccess } = useGetPlansQuery();
+    const handleChoosePlan = async (planId: string) => {
+        // Retrieve necessary data from your state/context
+        const userId = id; // Replace with actual user ID
+        const selectedNumber = 1; // Adjust as necessary, could be dynamic
+        const plan = plans?.find((p) => p.id === planId);
+
+        if (plan) {
+            const rawPrice = plan.price;
+            const priceWithoutDollarSign = rawPrice.replace('$', '');
+
+            const formDataWithUserType: MembershipFormForStripe = {
+                userId,
+                trainingPlanId: planId,
+                numOfMonths: selectedNumber,
+                price: priceWithoutDollarSign,
+                name: plan.name
+            };
+
+            try {
+                const paymentResponse = await updateMembershipStripe({ data: formDataWithUserType }).unwrap();
+                if (paymentResponse && paymentResponse.paymentUrl) {
+                    window.open(paymentResponse.paymentUrl, '_blank');
+                } else {
+                    console.error('Failed to get payment URL');
+                    window.alert('Failed to get payment URL');
+                }
+            } catch (error) {
+                console.error('Failed to create payment session', error);
+                window.alert('Failed to create payment session');
+            }
+        } else {
+            console.error('Selected plan not found');
+            window.alert('Selected plan not found');
+        }
+    };
+
     return (
         <section id='plans' className='mx-auto min-h-full w-5/6 py-20'>
             <motion.div
                 onViewportEnter={() => setSelectedPage(SelectedPage.Plans)}
             >
-                {/*HEADER*/}
+                {/* HEADER */}
                 <div className='md:my-5 md:w-3/5'>
                     <HText children={"MORE THAN JUST A GYM!"}></HText>
                     <br />
-
-
                 </div>
                 <div className='w-full flex justify-center text-center p-5'>
                     <h1 className='font-montserrat basis-3/5 text-xl font-bold'>Training Plans we offer</h1>
                 </div>
 
-                {/*  {/*BENEFIT CARDS
-                <motion.div
-                    className="mt-5 items-center justify-between gap-8 md:flex"
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, amount: 0.5 }}
-                    variants={container}
-                >
-                    {plans && plans.map((plan) => (
-                        <Benefit
-                            key={plan.id}
-                            icon={icon}
-                            title={plan.description}
-                            description={plan.price}
-                            setSelectedPage={setSelectedPage}
-                        />
-                    ))}
-                </motion.div>*/}
+                {/* BENEFIT CARDS */}
                 <div className='w-full justify-center align-center grid grid-cols-3 gap-4 max-sm:grid-cols-1 max-md:grid-cols-2'>
                     {plans && plans.map((plan) => (
-
-                        <div className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-gray-800 dark:border-gray-700 hover:-translate-y-4 transition-transform duration-500 ease-in-out hover:border-yellow-400">
+                        <div key={plan.id} className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-gray-800 dark:border-gray-700 hover:-translate-y-4 transition-transform duration-500 ease-in-out hover:border-yellow-400">
                             <h5 className="mb-4 text-2xl font-medium text-gray-500 dark:text-gray-400 uppercase text-center">{plan.name}</h5>
                             <div className="flex items-baseline text-gray-900 dark:text-white">
                                 <span className="text-3xl font-semibold">$</span>
@@ -118,18 +135,20 @@ const Plans = ({ setSelectedPage }: Props) => {
                                         <span className="text-base font-normal leading-tight text-gray-500 ms-3">Free Drink</span>
                                     </li>
                                 )}
-
                             </ul>
-                            <button type="button" className="text-black  bg-secondary-500  hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-2.5 inline-flex justify-center w-full text-center">Choose plan</button>
+                            <button
+                                type="button"
+                                onClick={() => handleChoosePlan(plan.id)}
+                                className="text-black bg-secondary-500 hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-2.5 inline-flex justify-center w-full text-center"
+                            >
+                                Choose plan
+                            </button>
                         </div>
-
-
                     ))}
                 </div>
 
                 {/* GRAPHICS AND DESCRIPTION */}
                 <div className='mt-16 items-center justify-between gap-20 md:flex md-mt-28'>
-
                     {/* GRAPHIC */}
                     <img className='mx-auto' src={BenefitsPageGraphic} alt="Girl Image" />
 
@@ -146,8 +165,9 @@ const Plans = ({ setSelectedPage }: Props) => {
                                 variants={{
                                     hidden: { opacity: 0, x: 50 },
                                     visible: { opacity: 1, x: 0 },
-                                }}>
-                                <HText >MILIONS OF HAPPY MEMEBESR GETTING{" "}
+                                }}
+                            >
+                                <HText>MILLIONS OF HAPPY MEMBERS GETTING{" "}
                                     <span className='text-primary-500'>FIT</span>
                                 </HText>
                             </motion.div>
@@ -162,7 +182,8 @@ const Plans = ({ setSelectedPage }: Props) => {
                             variants={{
                                 hidden: { opacity: 0, x: -50 },
                                 visible: { opacity: 1, x: 0 },
-                            }}>
+                            }}
+                        >
                             <p className="my-5">Nascetur aenean massa auctor tincidunt. Iaculis potenti amet
                                 egestas ultrices consectetur adipiscing ultricies enim. Pulvinar
                                 fames vitae vitae quis. Quis amet vulputate tincidunt at in
@@ -183,12 +204,11 @@ const Plans = ({ setSelectedPage }: Props) => {
                                 </ActionButton>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </motion.div>
         </section>
-    )
-}
+    );
+};
 
-export default Plans
+export default Plans;
