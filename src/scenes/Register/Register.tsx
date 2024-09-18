@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Logo from "@/assets/Logo.png";
-import { useAddMemberMutation, useGetTrainingPlanQuery,  useUpdateMembershipStripeRegisterMutation } from '@/store/memberSlice';
+import { useAddMemberMutation,   useUpdateMembershipStripeRegisterMutation } from '@/store/memberSlice';
 import { useGetPlansQuery } from '@/store/plansSlice';
 import { MembershipFormForStripe } from '../Benefits';
 import { BASE_URL } from '@/shared/data';
@@ -174,7 +174,7 @@ const handleGetPlan = async (id: any, trainingPlanId: any) => {
     }
 
     const rawPrice: any = planData.price;
-    const priceWithoutDollarSign = rawPrice.replace('$', '');
+    
     const name = planData.name;
     
     console.log("Training Plan:", planData);

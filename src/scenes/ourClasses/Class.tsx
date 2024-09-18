@@ -16,7 +16,7 @@ const Class = ({ name, email, image, trainerId }: Props) => {
     const [isModalOpen, setIsModalOpen] = useState(false); // State for modal visibility
   const [isSubmitting, setIsSubmitting] = useState(false); // State to handle submission
     const userToken = useSelector((state: any) => state.auth.userToken); 
-    const { data: member, isSuccess } = useGetUserTokenQuery(userToken!);
+    const { data: member } = useGetUserTokenQuery(userToken!);
     const id = member?.id
 
 
