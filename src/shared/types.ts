@@ -16,8 +16,9 @@ export interface BenefitType {
   }
 
   export interface ClassType {
+    id?: string | any
     name: string;
-    description?: string;
+    email?: string;
     image: string;
   }
 

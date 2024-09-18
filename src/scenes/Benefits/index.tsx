@@ -13,7 +13,7 @@ import { RootState } from '@/store';
 
 export type MembershipFormForStripe = {
     userId?: string;
-    trainingPlanId: string;
+    trainingPlanId: string | any;
     numOfMonths: number;
     name: string | any;
     price: string | any;
@@ -33,6 +33,11 @@ const Plans = ({ setSelectedPage }: Props) => {
 
     const handleChoosePlan = async (planId: string) => {
         // Retrieve necessary data from your state/context
+        if(id==null){
+            console.log("nisi logovan")
+            window.location.href = "http://localhost:5173/register";
+            return
+        }
         const userId = id; // Replace with actual user ID
         const selectedNumber = 1; // Adjust as necessary, could be dynamic
         const plan = plans?.find((p) => p.id === planId);
@@ -52,7 +57,8 @@ const Plans = ({ setSelectedPage }: Props) => {
             try {
                 const paymentResponse = await updateMembershipStripe({ data: formDataWithUserType }).unwrap();
                 if (paymentResponse && paymentResponse.paymentUrl) {
-                    window.open(paymentResponse.paymentUrl, '_blank');
+                   // window.open(paymentResponse.paymentUrl, '_blank');
+                   window.location.href = paymentResponse.paymentUrl
                 } else {
                     console.error('Failed to get payment URL');
                     window.alert('Failed to get payment URL');

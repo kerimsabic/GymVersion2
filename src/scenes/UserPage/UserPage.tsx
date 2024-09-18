@@ -1,5 +1,5 @@
 import { RootState } from '@/store'
-import { useGetMemberAttendanceQuery, useGetMemberIdQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useGetUserTokenQuery, useRenewMembershipMutation, useUpdateMemberMembershipSpecialMutation, useUpdateMemberPasswordMutation, useUpdateMembershipStripeMutation } from '@/store/memberSlice'
+import { useGetMemberAttendanceQuery, useGetMemberIdQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useGetUserTokenQuery, useRemoveTrainerMutation, useRenewMembershipMutation, useUpdateMemberMembershipSpecialMutation, useUpdateMemberPasswordMutation, useUpdateMembershipStripeMutation, useUploadImageMutation } from '@/store/memberSlice'
 import { useEffect, useState } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import * as yup from "yup"
@@ -21,7 +21,7 @@ export type MembershipForm = {
 
 export type MembershipFormForStripe = {
     userId?: string;
-    trainingPlanId: string;
+    trainingPlanId: string | any;
     numOfMonths: number;
     name: string | any;
     price: string | any;
@@ -45,14 +45,15 @@ const UserPage = () => {
 
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-
+    const [removeModalOpen, setRemoveModalOpen] = useState(false); // State for modal visibility
+    const [isSubmitting, setIsSubmitting] = useState(false); // State to handle submission
 
     const { data: plans } = useGetPlansQuery();
-    
+
 
     const { data: memberMembership, refetch: refetchMembers } = useGetMemberIdQuery(id!);
-    const { data: memberAttendance,  } = useGetMemberAttendanceQuery(id!);
-    const { data: membership,  } = useGetMemberMembershipQuery(id!);
+    const { data: memberAttendance, } = useGetMemberAttendanceQuery(id!);
+    const { data: membership, } = useGetMemberMembershipQuery(id!);
     const trainingPlanId = membership?.trainingPlanId;
     const { data: plan } = useGetTrainingPlanQuery(trainingPlanId!);
     const [showConfirmation, setShowConfirmation] = useState(false);
@@ -65,13 +66,16 @@ const UserPage = () => {
 
     useEffect(() => {
         if (isSuccess && id) {
-            refetchMembers; 
+            refetchMembers;
         }
     }, [isSuccess, id]);
 
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [formData, setFormData] = useState<PasswordForm | null>(null);
+
+
+    const [removeTrainer] = useRemoveTrainerMutation();
 
     const { register, handleSubmit, formState: { errors } } = useForm<PasswordForm>({
         resolver: yupResolver(schema),
@@ -114,33 +118,80 @@ const UserPage = () => {
         }
     };
 
+
+
     const handleCancel = () => {
         setIsModalVisible(false); // Just hide the modal
     };
-    const handleRenewMembershipClick = () => {
+    const handleRenewMembershipClick = async () => {
         setShowConfirmation(false);
-        
-        renewMembership({ id: id })
-            .unwrap()
-            .then((data) => {
-                // Check if the response contains an error
-                if (data.error) {
-                    // Handle error response
-                    console.error('Failed to renew membership', data.error);
-                    window.confirm('Failed to renew membership');
-                } else {
-                    // Handle success response
-                    console.log('Membership renewed successfully', data);
-                    window.confirm('Membership renewed successfully');
-                }
-            })
-            .catch((error) => {
-                // Handle other errors
-                console.error('Failed to renew membership', error);
-                window.confirm('Failed to renew membership');
-            });
+    
+        const rawPrice = membership?.trainingPlanPrice;
+        const priceWithoutDollarSign = rawPrice?.replace('$', '');
+    
+        const formDataWithUserType = {
+            userId: id,
+            trainingPlanId: membership?.trainingPlanId,
+            numOfMonths: selectedNumber,
+            price: priceWithoutDollarSign,
+            name: membership?.trainingPlanName
+        };
+    
+        try {
+            const paymentResponse = await updateMembershipPlanStipe({ data: formDataWithUserType }).unwrap();
+    
+            if (paymentResponse && paymentResponse.paymentUrl) {
+                // Redirect to the Stripe payment URL
+                window.open(paymentResponse.paymentUrl, '_blank');
+            } else {
+                console.error('Failed to get payment URL');
+                window.alert('Failed to get payment URL');
+            }
+        } catch (error) {
+            console.error('Failed to create payment session', error);
+            window.alert('Failed to create payment session');
+            return; // Stop the function here if the payment fails
+        }
+    
+        try {
+            const data = await renewMembership({ id }).unwrap();
+            
+            if (data.error) {
+                console.error('Failed to renew membership', data.error);
+                window.alert('Failed to renew membership');
+            } else {
+                console.log('Membership renewed successfully', data);
+                window.alert('Membership renewed successfully');
+            }
+        } catch (error) {
+            console.error('Failed to renew membership', error);
+            window.alert('Failed to renew membership');
+        }
     };
 
+
+    const handleRemoveTrainer = () => {
+
+        setRemoveModalOpen(true); // Open the modal
+    };
+
+    const handleConfirmRemove = async () => {
+        setIsSubmitting(true);
+        try {
+            // Send the request to assign the trainer to the member
+            await removeTrainer({ memberId: id }).unwrap();
+            alert("Trainer successfully removed!");
+        } catch (error) {
+            console.error("Failed to removing trainer:", error);
+            alert("Error removing trainer. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+            setRemoveModalOpen(false); // Close the modal
+        }
+    };
+    const handleCancelRemove = () => {
+        setRemoveModalOpen(false); // Close the modal
+    };
 
 
     const formatDateString = (dateString: string | undefined) => {
@@ -150,14 +201,11 @@ const UserPage = () => {
 
 
     const { data: trainingPlan, } = useGetTrainingPlanQuery(selectedPlanId, {
-        skip: !selectedPlanId, // Skip query if no plan is selected
+        skip: !selectedPlanId, 
     });
 
     const handleupdateMembershipPlanClick: SubmitHandler<MembershipForm> = async () => {
-       // const { data: plan, error: fetchError } = useGetTrainingPlanQuery(selectedPlanId);
-
-       
-
+        
         const rawPrice = trainingPlan?.price;
         const priceWithoutDollarSign = rawPrice?.replace('$', '');
 
@@ -166,7 +214,7 @@ const UserPage = () => {
             trainingPlanId: selectedPlanId,
             numOfMonths: selectedNumber,
             price: priceWithoutDollarSign,
-            name : trainingPlan?.name
+            name: trainingPlan?.name
         };
         setShowUpdatePlanForm(false);
         try {
@@ -194,8 +242,69 @@ const UserPage = () => {
 
 
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [uploadImage] = useUploadImageMutation();
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const handleUploadImage = async () => {
+       // if (!selectedFile || id) return;
+
+        setIsUploading(true);
+
+        try {
+            await uploadImage({ file: selectedFile, memberId: id }).unwrap();
+            alert('Image uploaded successfully');
+            setIsModalOpen(false); // Close the modal on success
+        } catch (error) {
+            console.error('Failed to upload image:', error);
+            alert('Failed to upload image');
+        } finally {
+            setIsUploading(false);
+            setSelectedFile(null);
+            setPreviewUrl(null);
+        }
+    };
+
+
+
     return (
         <>
+            {/* Modal */}
+            {removeModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+                    <div className="bg-white p-6 rounded-lg  text-center">
+                        <h2 className="text-lg font-semibold">Confirm Removal</h2>
+                        <p className="mt-4">Are you sure you want to remove this trainer?</p>
+                        <div className="mt-6 flex justify-center space-x-4">
+                            <button
+                                onClick={handleConfirmRemove}
+                                type="button"
+                                disabled={isSubmitting}
+                                className="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600"
+                            >
+                                {isSubmitting ? "Processing..." : "Confirm"}
+                            </button>
+                            <button
+                                onClick={handleCancelRemove}
+                                type="button"
+                                className="bg-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showConfirmation && (
                 <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50">
@@ -228,7 +337,7 @@ const UserPage = () => {
 
                         <div className='flex'>
                             <p className="text-xl font-semibold mb-4">
-                                Are you sure you want to renew existing membership?
+                                Select a traing pan to create a new membership
                             </p>
 
                         </div>
@@ -308,11 +417,56 @@ const UserPage = () => {
                 <div className="flex items-center justify-center h-[50%] ">
                     <div className="p-5 border rounded text-center text-gray-500 max-w-sm bg-white mt-24 mb-5">
                         <img
-                            className="w-32 h-32 rounded-full mx-auto bg-black"
+                            src={member?.image || 'default-image-url'}
+                            alt="Profile"
+                            className="w-32 h-32 object-cover rounded-full mx-auto bg-black"
                         />
-                        <div>
-                            <button><p>Edit Photo</p></button>
-                        </div>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="rounded-md bg-secondary-500 px-3 py-1 hover:bg-primary-500 hover:text-white mt-5 text-[12px]"
+                        >
+                            Edit Photo
+                        </button>
+
+                        {/* Modal for uploading image */}
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                                    <h2 className="text-xl font-semibold mb-4">Upload New Photo</h2>
+                                    {previewUrl && (
+                                        <div className="mb-4">
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="w-32 h-32 object-cover rounded-full"
+                                            />
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        onChange={handleFileChange}
+                                        className="block mb-4"
+                                    />
+                                    <button
+                                        onClick={handleUploadImage}
+                                        disabled={isUploading}
+                                        className={`px-4 py-2 text-white rounded ${isUploading ? 'bg-gray-400' : 'bg-blue-500'
+                                            }`}
+                                    >
+                                        {isUploading ? 'Uploading...' : 'Upload Image'}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="ml-4 px-4 py-2 bg-gray-300 rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+
+                       
                         <div className="text-xl mt-5">
                             <a
                                 href="#"
@@ -409,7 +563,11 @@ const UserPage = () => {
                                         <dt className="text-sm font-medium text-gray-500">Trainer</dt>
                                         <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                                             {memberMembership?.trainerName}
+                                            <button
+                                                onClick={handleRemoveTrainer}
+                                                type="button" className='ml-[20px] text-black bg-secondary-500 hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-0.5 inline-flex justify-center text-center'>Remove Trainer</button>
                                         </dd>
+
                                     </div>
                                 </dl>
                             </div>
@@ -486,10 +644,10 @@ const UserPage = () => {
                                     <p>Are you sure you want to update your password?</p>
                                     <div className="mt-4 flex flex-col items-center">
                                         {isLoadingData ? (
-                                           
-                                                 <Spinner /> 
-                                           
-                                           
+
+                                            <Spinner />
+
+
                                         ) : (
                                             <div className="flex justify-end">
                                                 <button
@@ -622,7 +780,7 @@ const UserPage = () => {
                                 </div>
                             ))}
                         </div>
-                       
+
 
                     </div>
 

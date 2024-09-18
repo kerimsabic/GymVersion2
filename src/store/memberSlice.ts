@@ -10,9 +10,13 @@ export const membersApi = createApi({
     reducerPath: 'membersApi',
     baseQuery: (args, api:any, extraOptions) => {
         const { userToken } = api.getState().auth; // Assuming the auth slice has userToken
-        const headers = {
+        const headers: any = {};
+        if (userToken) {
+            headers['authorization'] = `Bearer ${userToken}`;
+        }
+       /* const headers = {
           'authorization':`Bearer ${userToken}`
-        };    
+        };  */  
         return fetchBaseQuery({
           baseUrl: BASE_URL,
           headers,
@@ -96,6 +100,46 @@ export const membersApi = createApi({
             }),
             invalidatesTags: ["membersApi"],
         }),
+        updateMembershipStripeRegister: builder.mutation({
+            query: ({ data }) => ({
+                url: `/payment/paymentOnRegister`,
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["membersApi"],
+        }),
+        getTrainers : builder.query<any[], void>({
+            query: () => "/users/trainers",
+            providesTags: ["membersApi"],
+        }),
+        setTrainer: builder.mutation<void, { memberId: string | any; trainerId: string }>({
+            query: ({ memberId, trainerId }) => ({
+                url: `/members/setTrainer/${memberId}/${trainerId}`,
+                method: "PUT",
+            }),
+            invalidatesTags: ["membersApi"],
+        }),
+        removeTrainer: builder.mutation<void, { memberId: string | any}>({
+            query: ({ memberId }) => ({
+                url: `/members/removeTrainer/${memberId}`,
+                method: "PUT",
+            }),
+            invalidatesTags: ["membersApi"],
+        }),
+        uploadImage: builder.mutation<string, { file: File | any, memberId: string| any }>({
+            query: ({ file, memberId }) => {
+                const formData = new FormData();
+                formData.append('image', file);
+                return {
+                    url: `/users/uploadImageAzure/${memberId}`,
+                    method: "POST",
+                    body: formData,
+                };
+            },
+            transformResponse: (response: string) => response,
+          
+            invalidatesTags: ["membersApi"],
+        }),
         
     })
 })
@@ -103,7 +147,11 @@ export const membersApi = createApi({
 
 
 // Export hooks for usage in components
-export const {useAddMemberMutation, useUpdateMemberMutation, useGetMemberIdQuery, useUpdateMemberMembershipSpecialMutation, useGetUserTokenQuery, useUpdateMemberPasswordMutation, useGetMemberAttendanceQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useRenewMembershipMutation, useUpdateMembershipStripeMutation } = membersApi;
+export const {useAddMemberMutation, useUpdateMemberMutation, useGetMemberIdQuery, useUpdateMemberMembershipSpecialMutation, 
+    useGetUserTokenQuery, useUpdateMemberPasswordMutation, useGetMemberAttendanceQuery, 
+    useGetMemberMembershipQuery, useGetTrainingPlanQuery, useRenewMembershipMutation, 
+    useUpdateMembershipStripeMutation, useGetTrainersQuery, useSetTrainerMutation, 
+    useRemoveTrainerMutation, useUploadImageMutation, useUpdateMembershipStripeRegisterMutation } = membersApi;
 
 
 export default membersApi;
