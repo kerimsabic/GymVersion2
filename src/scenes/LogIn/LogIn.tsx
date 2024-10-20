@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form"
 import { Alert } from "@material-tailwind/react";
-
-
+import Logo from "@/assets/Logo.png";
 import { AppDispatch, RootState } from "@/store"
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -53,7 +52,7 @@ const LogIn = () => {
             <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
                 <a href="#" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 ">
                    
-                    EVOGYM
+                   <img src={Logo} alt="" />
                 </a>
                 <div className="w-full bg-white rounded-lg shadow  md:mt-0 sm:max-w-md xl:p-0">
                     <div className="p-6 space-y-4 md:space-y-6 sm:p-8">

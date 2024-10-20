@@ -1,26 +1,35 @@
 import { RootState } from '@/store'
-import { useGetMemberIdQuery, useGetUserTokenQuery, useUpdateMemberPasswordMutation } from '@/store/memberSlice'
+import { useGetMemberAttendanceQuery, useGetMemberIdQuery, useGetMemberMembershipQuery, useGetTrainingPlanQuery, useGetUserTokenQuery, useRemoveTrainerMutation, useRenewMembershipMutation, useUpdateMemberMembershipSpecialMutation, useUpdateMemberPasswordMutation, useUpdateMembershipStripeMutation, useUploadImageMutation } from '@/store/memberSlice'
 import { useEffect, useState } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import * as yup from "yup"
 import { useSelector } from 'react-redux'
 import { yupResolver } from "@hookform/resolvers/yup"
-
-
+import { useGetPlansQuery } from '@/store/plansSlice'
+import Spinner from '../Spinner/Spinner'
 
 export type PasswordForm = {
-
     password: string,
-    //confirmpassword: string
+    repeatedPassword: string
+}
 
+export type MembershipForm = {
+    userId?: string;
+    trainingPlanId: string;
+    numOfMonths: number;
+}
+
+export type MembershipFormForStripe = {
+    userId?: string;
+    trainingPlanId: string | any;
+    numOfMonths: number;
+    name: string | any;
+    price: string | any;
 }
 
 const schema = yup.object().shape({
     password: yup.string().required('New Password is required'),
-   /* confirmpassword: yup
-        .string()
-        .oneOf([yup.ref('newPassword')], 'Passwords must match')
-        .required('Confirm Password is required'),*/
+    repeatedPassword: yup.string().required('Confirm Password is required').oneOf([yup.ref('password')], 'Passwords must match')
 });
 
 const UserPage = () => {
@@ -29,51 +38,435 @@ const UserPage = () => {
 
     const { data: member, isSuccess } = useGetUserTokenQuery(userToken!);
     const id = member?.id
-    const { data: memberMembership, refetch:refetchMembers } = useGetMemberIdQuery(id!)
 
-    const [updatePassword]= useUpdateMemberPasswordMutation();
+    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+    const [selectedNumber, setSelectedNumber] = useState<number>(1);
+    const [isPlanSelected, setIsPlanSelected] = useState(false);
+
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
+    const [removeModalOpen, setRemoveModalOpen] = useState(false); // State for modal visibility
+    const [isSubmitting, setIsSubmitting] = useState(false); // State to handle submission
+
+    const { data: plans } = useGetPlansQuery();
+
+
+    const { data: memberMembership, refetch: refetchMembers } = useGetMemberIdQuery(id!);
+    const { data: memberAttendance, } = useGetMemberAttendanceQuery(id!);
+    const { data: membership, } = useGetMemberMembershipQuery(id!);
+    const trainingPlanId = membership?.trainingPlanId;
+    const { data: plan } = useGetTrainingPlanQuery(trainingPlanId!);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const [showUpdatePlanForm, setShowUpdatePlanForm] = useState(false);
+
+    const [renewMembership] = useRenewMembershipMutation();
+    const [] = useUpdateMemberMembershipSpecialMutation();
+    const [updateMembershipPlanStipe] = useUpdateMembershipStripeMutation();
 
     useEffect(() => {
         if (isSuccess && id) {
-          refetchMembers;
+            refetchMembers;
         }
-      }, [isSuccess, id]);
-    
+    }, [isSuccess, id]);
 
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [formData, setFormData] = useState<PasswordForm | null>(null);
 
-     const { register, handleSubmit, } = useForm<PasswordForm>({
-         resolver: yupResolver(schema),
-     });
 
-     const handleFormSubmittion: SubmitHandler<PasswordForm> = async (data) => {
+    const [removeTrainer] = useRemoveTrainerMutation();
+
+    const { register, handleSubmit, formState: { errors } } = useForm<PasswordForm>({
+        resolver: yupResolver(schema),
+    });
+
+    const { handleSubmit: handleSubmit2 } = useForm<MembershipForm>();
+    const [updatePassword] = useUpdateMemberPasswordMutation();
+
+    const handleFormSubmittion: SubmitHandler<PasswordForm> = (data) => {
+        setFormData(data);
+        setIsModalVisible(true); // Show the modal when submit is clicked
+    };
+
+    const handleConfirm = async () => {
+        if (!formData) return;
+
+        setIsLoadingData(true); // Show the spinner
+
+        try {
+            // Replace this with your actual API call
+            const response = await updatePassword({ id: id, data: formData });
+
+            if (response) {
+                window.alert("Successfully updated password");
+                setIsFormVisible(false);
+            } else {
+                window.alert("Failed to update password");
+            }
+        } catch (error: any) {
+            console.error("Error updating password:", error);
+
+            if (error.response) {
+                window.alert("Failed to update password: " + error.response.data.message);
+            } else {
+                window.alert("Failed to update password: " + error.message);
+            }
+        } finally {
+            setIsLoadingData(false); // Hide the spinner
+            setIsModalVisible(false); // Hide the modal
+        }
+    };
+
+
+
+    const handleCancel = () => {
+        setIsModalVisible(false); // Just hide the modal
+    };
+    const handleRenewMembershipClick = async () => {
+        setShowConfirmation(false);
+    
+        const rawPrice = membership?.trainingPlanPrice;
+        const priceWithoutDollarSign = rawPrice?.replace('$', '');
+    
+        const formDataWithUserType = {
+            userId: id,
+            trainingPlanId: membership?.trainingPlanId,
+            numOfMonths: selectedNumber,
+            price: priceWithoutDollarSign,
+            name: membership?.trainingPlanName
+        };
     
         try {
-            console.log(data)
-            await updatePassword({id:id, data:data})
-
-            if(isSuccess){
-                window.confirm("Successfully updated password"),
-                setIsFormVisible(!isFormVisible)
-            }
-          }
-                 
-         catch (error) {
-          console.error("Error updating plan:", error);
-        }
-      };
+            const paymentResponse = await updateMembershipPlanStipe({ data: formDataWithUserType }).unwrap();
     
+            if (paymentResponse && paymentResponse.paymentUrl) {
+                // Redirect to the Stripe payment URL
+                window.open(paymentResponse.paymentUrl, '_blank');
+            } else {
+                console.error('Failed to get payment URL');
+                window.alert('Failed to get payment URL');
+            }
+        } catch (error) {
+            console.error('Failed to create payment session', error);
+            window.alert('Failed to create payment session');
+            return; // Stop the function here if the payment fails
+        }
+    
+        try {
+            const data = await renewMembership({ id }).unwrap();
+            
+            if (data.error) {
+                console.error('Failed to renew membership', data.error);
+                window.alert('Failed to renew membership');
+            } else {
+                console.log('Membership renewed successfully', data);
+                window.alert('Membership renewed successfully');
+            }
+        } catch (error) {
+            console.error('Failed to renew membership', error);
+            window.alert('Failed to renew membership');
+        }
+    };
+
+
+    const handleRemoveTrainer = () => {
+
+        setRemoveModalOpen(true); // Open the modal
+    };
+
+    const handleConfirmRemove = async () => {
+        setIsSubmitting(true);
+        try {
+            // Send the request to assign the trainer to the member
+            await removeTrainer({ memberId: id }).unwrap();
+            alert("Trainer successfully removed!");
+        } catch (error) {
+            console.error("Failed to removing trainer:", error);
+            alert("Error removing trainer. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+            setRemoveModalOpen(false); // Close the modal
+        }
+    };
+    const handleCancelRemove = () => {
+        setRemoveModalOpen(false); // Close the modal
+    };
+
+
+    const formatDateString = (dateString: string | undefined) => {
+        const date = new Date(dateString!);
+        return date.toLocaleString();
+    };
+
+
+    const { data: trainingPlan, } = useGetTrainingPlanQuery(selectedPlanId, {
+        skip: !selectedPlanId, 
+    });
+
+    const handleupdateMembershipPlanClick: SubmitHandler<MembershipForm> = async () => {
+        
+        const rawPrice = trainingPlan?.price;
+        const priceWithoutDollarSign = rawPrice?.replace('$', '');
+
+        const formDataWithUserType: MembershipFormForStripe = {
+            userId: id,
+            trainingPlanId: selectedPlanId,
+            numOfMonths: selectedNumber,
+            price: priceWithoutDollarSign,
+            name: trainingPlan?.name
+        };
+        setShowUpdatePlanForm(false);
+        try {
+            // Call mutation to create payment session
+            const paymentResponse = await updateMembershipPlanStipe({ data: formDataWithUserType }).unwrap();
+
+            if (paymentResponse && paymentResponse.paymentUrl) {
+                // Redirect to the Stripe payment URL
+                window.open(paymentResponse.paymentUrl, '_blank');
+            } else {
+                console.error('Failed to get payment URL');
+                window.alert('Failed to get payment URL');
+            }
+        } catch (error) {
+            console.error('Failed to create payment session', error);
+            window.alert('Failed to create payment session');
+        }
+    };
+
+    const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedValue = e.target.value;
+        setSelectedPlanId(selectedValue);
+        setIsPlanSelected(!!selectedValue); // Update isPlanSelected based on whether a value is selected
+    };
+
+
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [uploadImage] = useUploadImageMutation();
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const handleUploadImage = async () => {
+       // if (!selectedFile || id) return;
+
+        setIsUploading(true);
+
+        try {
+            await uploadImage({ file: selectedFile, memberId: id }).unwrap();
+            alert('Image uploaded successfully');
+            setIsModalOpen(false); // Close the modal on success
+        } catch (error) {
+            console.error('Failed to upload image:', error);
+            alert('Failed to upload image');
+        } finally {
+            setIsUploading(false);
+            setSelectedFile(null);
+            setPreviewUrl(null);
+        }
+    };
+
+
 
     return (
         <>
+            {/* Modal */}
+            {removeModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+                    <div className="bg-white p-6 rounded-lg  text-center">
+                        <h2 className="text-lg font-semibold">Confirm Removal</h2>
+                        <p className="mt-4">Are you sure you want to remove this trainer?</p>
+                        <div className="mt-6 flex justify-center space-x-4">
+                            <button
+                                onClick={handleConfirmRemove}
+                                type="button"
+                                disabled={isSubmitting}
+                                className="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600"
+                            >
+                                {isSubmitting ? "Processing..." : "Confirm"}
+                            </button>
+                            <button
+                                onClick={handleCancelRemove}
+                                type="button"
+                                className="bg-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showConfirmation && (
+                <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white p-8 rounded shadow-md">
+                        <p className="text-xl font-semibold mb-4">
+                            Are you sure you want to renew existing membership?
+                        </p>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowConfirmation(false)}
+                                className="mr-4 text-blue-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleRenewMembershipClick()}
+                                className={`bg-yellow-400 hover:bg-yellow-600 text-black font-bold py-2 px-4 border border-yellow-700 rounded `}
+
+                            >
+                                Yes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showUpdatePlanForm && (
+                <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white p-8 rounded shadow-md">
+
+                        <div className='flex'>
+                            <p className="text-xl font-semibold mb-4">
+                                Select a traing pan to create a new membership
+                            </p>
+
+                        </div>
+
+                        <div className=' w-full pb-48 justify-center items-center'>
+                            <form className='' onSubmit={handleSubmit2(handleupdateMembershipPlanClick)}>
+                                {/* Training Plan Dropdown */}
+                                <div className="relative mb-5 group pt-5">
+
+                                    <select
+                                        onChange={handlePlanChange}
+                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                    >
+                                        <option value="" disabled selected>
+                                            Select a Training Plan
+                                        </option>
+                                        {plans?.map((plan) => (
+                                            <option
+                                                className="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
+                                                key={plan.id}
+                                                value={plan.id}
+                                            >
+                                                {plan.name} - {plan.price}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                </div>
+
+                                {/* Number of Months Dropdown */}
+
+                                <div className="relative mb-5 group pt-5">
+                                    <p className='absolute top-0'>Months</p>
+                                    <select
+                                        onChange={(e) => {
+                                            const selectedValue = parseInt(e.target.value, 10);
+                                            console.log(selectedValue);
+                                            setSelectedNumber(selectedValue);
+                                        }}
+                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                    >
+                                        {[...Array(12).keys()].map((number) => (
+                                            <option
+                                                className="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
+                                                key={number + 1}
+                                                value={number + 1}
+                                            >
+                                                {number + 1}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Submit Button */}
+                                <div className="flex justify-center items-center ">
+                                    <input
+                                        type="submit"
+                                        className={`h-[40px] cursor-pointer text-white bg-yellow-500 hover:bg-red-400 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full  text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${!isPlanSelected && 'opacity-50 cursor-not-allowed'}`} // Disable button if no plan is selected
+                                        disabled={!isPlanSelected} // Disable button if no plan is selected
+                                    />
+                                </div>
+                            </form>
+
+                        </div>
+                        <button
+                            onClick={() => { setShowUpdatePlanForm(false), setIsPlanSelected(false) }}
+                            className=" text-yellow-500 text-end w-full fond-bold text-xl "
+                        >
+                            Close
+                        </button>
+
+                    </div>
+                </div>
+            )}
 
             <div className=''>
                 <div className="flex items-center justify-center h-[50%] ">
                     <div className="p-5 border rounded text-center text-gray-500 max-w-sm bg-white mt-24 mb-5">
                         <img
-                            className="w-32 h-32 rounded-full mx-auto bg-black"
-                           
+                            src={member?.image || 'default-image-url'}
+                            alt="Profile"
+                            className="w-32 h-32 object-cover rounded-full mx-auto bg-black"
                         />
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="rounded-md bg-secondary-500 px-3 py-1 hover:bg-primary-500 hover:text-white mt-5 text-[12px]"
+                        >
+                            Edit Photo
+                        </button>
+
+                        {/* Modal for uploading image */}
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+                                    <h2 className="text-xl font-semibold mb-4">Upload New Photo</h2>
+                                    {previewUrl && (
+                                        <div className="mb-4">
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="w-32 h-32 object-cover rounded-full"
+                                            />
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        onChange={handleFileChange}
+                                        className="block mb-4"
+                                    />
+                                    <button
+                                        onClick={handleUploadImage}
+                                        disabled={isUploading}
+                                        className={`px-4 py-2 text-white rounded ${isUploading ? 'bg-gray-400' : 'bg-blue-500'
+                                            }`}
+                                    >
+                                        {isUploading ? 'Uploading...' : 'Upload Image'}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="ml-4 px-4 py-2 bg-gray-300 rounded"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+
+                       
                         <div className="text-xl mt-5">
                             <a
                                 href="#"
@@ -170,7 +563,11 @@ const UserPage = () => {
                                         <dt className="text-sm font-medium text-gray-500">Trainer</dt>
                                         <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                                             {memberMembership?.trainerName}
+                                            <button
+                                                onClick={handleRemoveTrainer}
+                                                type="button" className='ml-[20px] text-black bg-secondary-500 hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-0.5 inline-flex justify-center text-center'>Remove Trainer</button>
                                         </dd>
+
                                     </div>
                                 </dl>
                             </div>
@@ -184,29 +581,25 @@ const UserPage = () => {
                                     </div>
                                 </dl>
                             </div>
-                            
+
                         </>
                     ) : null}
-
-
-
-
 
                     <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
                         <dl className="sm:divide-y sm:divide-gray-200">
                             <div className="py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                <dt className="text-sm font-medium text-gray-500">Password</dt>
+
                                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                    <button onClick={() => { setIsFormVisible(true) }}>Change Password</button>
+                                    <button onClick={() => { setIsFormVisible(true) }} className='rounded-md bg-secondary-500 px-10 py-2 hover:bg-primary-500 hover:text-white'>Change Password</button>
                                 </dd>
                             </div>
                         </dl>
                         {isFormVisible && (
-                            <div>
+                            <div className='pr-5 pl-5'>
                                 <h2>Change Password</h2>
-                               
+
                                 <form onSubmit={handleSubmit(handleFormSubmittion)}>
-                                   
+
                                     <div className="border border-gray-300 rounded-md mb-3">
                                         <input
                                             type="password"
@@ -214,25 +607,180 @@ const UserPage = () => {
                                             className="w-full p-2"
                                             {...register("password")}
                                         />
+                                        {errors.password && <p className="text-red-500">{errors.password.message}</p>}
                                     </div>
-                         {/* <div className="border border-gray-300 rounded-md mb-3">
+
+                                    <div className="border border-gray-300 rounded-md mb-3">
                                         <input
                                             type="password"
-                                            placeholder="Confirm Password"
+                                            placeholder="Repeat Password"
                                             className="w-full p-2"
-                                            {...register("password")}
+                                            {...register("repeatedPassword")}
                                         />
-                                    </div>*/}
-                                  
-                                    <button
-                                        type="submit"
-                                        className="bg-blue-500 text-white px-4 py-2 rounded-md"
-                                    >
-                                        Submit
-                                    </button>
+                                        {errors.repeatedPassword && <p className="text-red-500">{errors.repeatedPassword.message}</p>}
+                                    </div>
+                                    <div className='flex justify-between'>
+                                        <button
+                                            type="submit"
+                                            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                                        >
+                                            Submit
+                                        </button>
+                                        <button
+                                            onClick={() => setIsFormVisible(false)}
+                                            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                                        >
+                                            Cancle
+                                        </button>
+                                    </div>
+
                                 </form>
                             </div>
                         )}
+
+                        {isModalVisible && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                <div className="bg-white p-4 rounded-md shadow-md">
+                                    <p>Are you sure you want to update your password?</p>
+                                    <div className="mt-4 flex flex-col items-center">
+                                        {isLoadingData ? (
+
+                                            <Spinner />
+
+
+                                        ) : (
+                                            <div className="flex justify-end">
+                                                <button
+                                                    onClick={handleConfirm}
+                                                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button
+                                                    onClick={handleCancel}
+                                                    className="ml-2 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <h1 className='mx-10 text-center mt-10'>Membership & Plan Information:</h1>
+                        <div className='flex justify-center mt-5 gap-5 max-md:flex-col md:flex-row items-center'>
+                            <div className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-gray-800 dark:border-gray-700  hover:border-yellow-400 min-h-[485px] flex flex-col justify-between">
+                                <h5 className="mb-4 text-2xl font-medium text-gray-500 dark:text-gray-400 uppercase text-center">MEMBERSHIP</h5>
+                                <ul role="list" className="space-y-5 my-7">
+                                    <li className="flex items-center">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">Start Date: <span className='font-bold text-md'>{formatDateString(membership?.startDate)}</span></span>
+                                    </li>
+                                    <li className="flex">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">End Date: <span className='font-bold text-md'>{formatDateString(membership?.endDate)}</span></span>
+                                    </li>
+                                    <li className="flex">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">Current Plan: <span className='font-bold text-md'>{membership?.trainingPlanName}</span></span>
+                                    </li>
+                                    <li className="flex">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">Current Plan Price: <span className='font-bold text-md'>{membership?.trainingPlanPrice}</span></span>
+                                    </li>
+                                </ul>
+                                <button onClick={() => setShowConfirmation(true)} type="button" className="text-black  bg-secondary-500  hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-2.5 inline-flex justify-center w-full text-center">Renew membership</button>
+                            </div>
+
+                            <div className="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow sm:p-8 dark:bg-gray-800 dark:border-gray-700  ease-in-out hover:border-yellow-400">
+                                <h5 className="mb-4 text-2xl font-medium text-gray-500 dark:text-gray-400 uppercase text-center">TRAINING PLAN</h5>
+                                <div className="flex items-baseline text-gray-900 dark:text-white">
+                                    <span className="text-3xl font-semibold">$</span>
+                                    <span className="text-5xl font-extrabold tracking-tight">{plan?.price.slice(0, -1)}</span>
+                                    <span className="ms-1 text-xl font-normal text-gray-500 dark:text-gray-400">/month</span>
+                                </div>
+                                <h5 className="mt-4 text-xl font-medium text-gray-500 dark:text-gray-400 uppercase text-center">{plan?.name}</h5>
+                                <ul role="list" className="space-y-5 my-7">
+                                    <p className="mb-5 text-base text-gray">{plan?.description}</p>
+                                    <li className="flex items-center">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">{plan?.numOfPeople} team members</span>
+                                    </li>
+                                    <li className="flex">
+                                        <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                        </svg>
+                                        <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">{plan?.accessTime} access time</span>
+                                    </li>
+                                    {plan?.freeparking ? (
+                                        <li className="flex">
+                                            <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                            </svg>
+                                            <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">Free Parking</span>
+                                        </li>
+                                    ) : (
+                                        <li className="flex line-through decoration-gray-500">
+                                            <svg className="flex-shrink-0 w-4 h-4 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                            </svg>
+                                            <span className="text-base font-normal leading-tight text-gray-500 ms-3">Free Parking</span>
+                                        </li>
+                                    )}
+                                    {plan?.water ? (
+                                        <li className="flex">
+                                            <svg className="flex-shrink-0 w-4 h-4 text-yellow-400 dark:text-blue-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                            </svg>
+                                            <span className="text-base font-normal leading-tight text-gray-500 dark:text-gray-400 ms-3">Free Drink</span>
+                                        </li>
+                                    ) : (
+                                        <li className="flex line-through decoration-gray-500">
+                                            <svg className="flex-shrink-0 w-4 h-4 text-gray-400 dark:text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+                                            </svg>
+                                            <span className="text-base font-normal leading-tight text-gray-500 ms-3">Free Drink</span>
+                                        </li>
+                                    )}
+
+                                </ul>
+                                <button onClick={() => setShowUpdatePlanForm(true)} type="button" className="text-black  bg-secondary-500  hover:bg-primary-500 hover:text-white font-medium rounded-lg text-sm px-5 py-2.5 inline-flex justify-center w-full text-center">Choose different plan</button>
+                            </div>
+                        </div>
+
+
+
+                        <h1 className='mx-10 text-center mt-10'>Attendace Information:</h1>
+                        <h1 className='mx-10  mt-10 text-gray-500'>Total Attendance In Last 30 days:
+                            <span className='text-yellow-400 text-3xl font-bold'>
+                                {" " + memberAttendance?.length}
+                            </span></h1>
+                        <div className='pt-10 grid grid-cols-4 gap-2 max-xs:grid-cols-2 mx-2 mb-5'>
+                            {memberAttendance && memberAttendance.map((attandance: any) => (
+
+                                <div className="block max-w-xs p-3 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                    <div className='flex justify-between'>
+                                        <h5 className="mb-2 text-sm  tracking-tight text-gray-900 dark:text-white">Attendance Date</h5>
+                                        <svg stroke="currentColor" fill="none" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M20.2739 9.86883L16.8325 4.95392L18.4708 3.80676L21.9122 8.72167L20.2739 9.86883Z" fill="currentColor"></path><path d="M18.3901 12.4086L16.6694 9.95121L8.47783 15.687L10.1985 18.1444L8.56023 19.2916L3.97162 12.7383L5.60992 11.5912L7.33068 14.0487L15.5222 8.31291L13.8015 5.8554L15.4398 4.70825L20.0284 11.2615L18.3901 12.4086Z" fill="currentColor"></path><path d="M20.7651 7.08331L22.4034 5.93616L21.2562 4.29785L19.6179 5.445L20.7651 7.08331Z" fill="currentColor"></path><path d="M7.16753 19.046L3.72607 14.131L2.08777 15.2782L5.52923 20.1931L7.16753 19.046Z" fill="currentColor"></path><path d="M4.38208 18.5549L2.74377 19.702L1.59662 18.0637L3.23492 16.9166L4.38208 18.5549Z" fill="currentColor"></path></svg>
+                                    </div>
+
+                                    <p className="font-normal text-sm text-gray-700 dark:text-gray-400"><span className='font-bold'>{formatDateString(attandance.date)}</span> </p>
+                                </div>
+                            ))}
+                        </div>
+
 
                     </div>
 
@@ -246,4 +794,4 @@ const UserPage = () => {
     )
 }
 
-export default UserPage
+export default UserPage;

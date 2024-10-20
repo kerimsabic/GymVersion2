@@ -3,6 +3,15 @@ module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      keyframes: {
+        spin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+      },
+      animation: {
+        spin: 'spin 5s linear infinite',
+      },
       colors: {
         "gray-20": "#F8F4EB",
         "gray-50": "#EFE6E6",
@@ -36,5 +45,6 @@ module.exports = {
       md: "1060px",
     },
   },
+  
   plugins: [],
 };

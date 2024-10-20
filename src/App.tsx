@@ -7,6 +7,8 @@ import { Route, Routes } from "react-router-dom"
 import HomePage from './scenes/HomePage/HomePage'
 import LogIn from './scenes/LogIn'
 import UserPage from './scenes/UserPage/UserPage'
+import Register from './scenes/Register'
+import PaymentSuccessPage from './scenes/UserPage/PaymentSuccessPage'
 
 
 function App() {
@@ -30,18 +32,20 @@ function App() {
 
   return (
 
-    <div className='app bg-gray-20'>
+    <div className='app '>
 
       <Navbar
         isTopOfPage={isTopOfPage}
         selectedPage={selectedPage}
         setSelectedPage={setSelectedPage} />
-       <Routes>
-       <Route path="/" element={<HomePage setSelectedPage={setSelectedPage} />} />
+      <Routes>
+        <Route path="/" element={<HomePage setSelectedPage={setSelectedPage} />} />
         <Route path="/home" element={<HomePage setSelectedPage={setSelectedPage} />} />
-        <Route path='/login' element={<LogIn/>}/>
-        <Route path='/user' element={<UserPage />}/>
-       
+        <Route path='/login' element={<LogIn />} />
+        <Route path='/user' element={<UserPage />} />
+        <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path='/register' element={<Register />} />
+
       </Routes>
       <Footer />
 
