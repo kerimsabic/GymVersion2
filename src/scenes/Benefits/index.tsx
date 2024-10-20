@@ -35,11 +35,11 @@ const Plans = ({ setSelectedPage }: Props) => {
         // Retrieve necessary data from your state/context
         if(id==null){
             console.log("nisi logovan")
-            window.location.href = "http://localhost:5173/register";
+            window.location.href = "https://gymversion2.pages.dev/register";
             return
         }
         const userId = id; // Replace with actual user ID
-        const selectedNumber = 1; // Adjust as necessary, could be dynamic
+        const selectedNumber = 1; 
         const plan = plans?.find((p) => p.id === planId);
 
         if (plan) {
